@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block titre %}ClinikDoc - Prise de rendez-vous médical{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-container">
+      <a href="{{ url_for('index') }}" class="logo-area" aria-label="Accueil ClinikDoc">
+        <span>🏥</span> ClinikDoc
+      </a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Ouvrir le menu de navigation">☰</button>
+      <nav class="main-nav" id="main-nav">
+        <a href="{{ url_for('index') }}">Accueil</a>
+        <a href="{{ url_for('medecins') }}">Médecins</a>
+        <a href="{{ url_for('reserver') }}">Prendre RDV</a>
+        <a href="{{ url_for('mes_rdv') }}">Mes Rendez-vous</a>
+        {% if session.get('admin_id') %}
+          <a href="{{ url_for('admin_planning') }}" class="admin-badge">Planning Admin</a>
+          <a href="{{ url_for('admin_patients') }}">Patients</a>
+          <a href="{{ url_for('admin_statistiques') }}">Statistiques</a>
+          <form action="{{ url_for('deconnexion') }}" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-secondary">Déconnexion</button>
+          </form>
+        {% else %}
+          <a href="{{ url_for('connexion') }}">Espace Pro</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="flash-container">
+      {% for categorie, message in get_flashed_messages(with_categories=true) %}
+        <div class="flash-message {{ categorie }}" role="alert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+
+    {% block contenu %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 ClinikDoc - Clinique Médicale Privée de Douala (Cameroun)[cite: 41].</p>
+    <p>Technologies Web et Applications - Évaluation Finale en Génie Logiciel[cite: 28].</p>
+  </footer>
+</body>
+</html>

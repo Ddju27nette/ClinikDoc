@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block titre %}{{ action }} un Médecin - Administration{% endblock %}
+
+{% block contenu %}
+<div style="max-width: 650px; margin: 0 auto;">
+  <div style="margin-bottom: 1.5rem;">
+    <h1>{{ action }} un praticien</h1>
+    <p style="color: var(--text-muted);">Renseignez les spécialités et les jours d'intervention médicale.</p>
+  </div>
+
+  <form method="POST" class="card">
+    <div class="form-group">
+      <label for="nom">Nom complet avec civilité *</label>
+      <input type="text" name="nom" id="nom" class="form-control" 
+             value="{{ medecin.nom if medecin else '' }}" placeholder="Ex: Dr Atangana Guy" required>
+    </div>
+
+    <div class="form-group">
+      <label for="specialite">Spécialité médicale *</label>
+      <select name="specialite" id="specialite" class="form-control" required>
+        <option value="Généraliste" {% if medecin and medecin.specialite == 'Généraliste' %}selected{% endif %}>Généraliste</option>
+        <option value="Pédiatrie" {% if medecin and medecin.specialite == 'Pédiatrie' %}selected{% endif %}>Pédiatrie</option>
+        <option value="Gynécologie" {% if medecin and medecin.specialite == 'Gynécologie' %}selected{% endif %}>Gynécologie</option>
+        <option value="Cardiologie" {% if medecin and medecin.specialite == 'Cardiologie' %}selected{% endif %}>Cardiologie</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Jours de consultation *</label>
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-top: 0.5rem;">
+        {% set jours_existants = medecin.jours_consultation.split(',') if medecin else [] %}
+        {% for jour in ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'] %}
+          <label style="font-weight: normal; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" name="jours" value="{{ jour }}" 
+                   {% if jour in jours_existants %}checked{% endif %}>
+            {{ jour }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if medecin %}
+      <div class="form-group" style="margin-top: 1rem;">
+        <label style="font-weight: normal; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+          <input type="checkbox" name="actif" value="1" {% if medecin.actif == 1 %}checked{% endif %}>
+          Praticien en activité
+        </label>
+      </div>
+    {% endif %}
+
+    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+      <button type="submit" class="btn btn-primary" style="flex: 1;">Enregistrer</button>
+      <a href="{{ url_for('admin_planning') }}" class="btn btn-secondary">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

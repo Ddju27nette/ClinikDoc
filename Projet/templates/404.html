@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block titre %}Page introuvable - ClinikDoc{% endblock %}
+
+{% block contenu %}
+<section class="card" style="text-align: center; padding: 3rem 1.5rem;">
+  <h1 style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">404</h1>
+  <h2 style="margin-bottom: 1rem;">Page introuvable</h2>
+  <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+    Le lien demandé n'existe pas ou la page a été déplacée.
+  </p>
+  <a href="{{ url_for('index') }}" class="btn btn-primary">Retour à l'accueil</a>
+</section>
+{% endblock %}

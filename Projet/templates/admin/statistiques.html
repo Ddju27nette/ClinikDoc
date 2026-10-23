@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block titre %}Statistiques de la Clinique - ClinikDoc{% endblock %}
+
+{% block contenu %}
+<div>
+  <div style="margin-bottom: 1.5rem;">
+    <h1>Tableau de bord statistique</h1>
+    <p style="color: var(--text-muted);">Indicateurs de performance de la clinique chargés en temps réel via l'API JSON.</p>
+  </div>
+
+  <div id="stats-chargement" class="card" style="text-align: center; color: var(--secondary);">
+    Chargement des indicateurs...
+  </div>
+
+  <div id="stats-contenu" style="display: none;">
+    <div class="grid-2">
+      <!-- 1. Nombre de rendez-vous par spécialité -->
+      <section class="card">
+        <h2 style="font-size: 1.15rem; margin-bottom: 1rem;">1. Rendez-vous par spécialité</h2>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr><th>Spécialité</th><th>Total Consultations</th></tr>
+            </thead>
+            <tbody id="table-specialite"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 2. Les 5 jours les plus chargés -->
+      <section class="card">
+        <h2 style="font-size: 1.15rem; margin-bottom: 1rem;">2. Les 5 jours les plus chargés (Ce mois)</h2>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr><th>Date</th><th>Rendez-vous</th></tr>
+            </thead>
+            <tbody id="table-jours"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid-2" style="margin-top: 1.5rem;">
+      <!-- 3. Taux d'annulation par médecin -->
+      <section class="card">
+        <h2 style="font-size: 1.15rem; margin-bottom: 1rem;">3. Taux d'annulation par médecin</h2>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr><th>Médecin</th><th>RDV Totaux</th><th>Annulés</th><th>Taux (%)</th></tr>
+            </thead>
+            <tbody id="table-annulations"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 4. Nouveaux patients par semaine -->
+      <section class="card">
+        <h2 style="font-size: 1.15rem; margin-bottom: 1rem;">4. Nouveaux patients par semaine</h2>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr><th>Semaine (Année-Semaine)</th><th>Inscriptions</th></tr>
+            </thead>
+            <tbody id="table-semaine"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const chargement = document.getElementById("stats-chargement");
+  const contenu = document.getElementById("stats-contenu");
+
+  try {
+    const res = await fetch("/api/statistiques");
+    if (!res.ok) throw new Error("Erreur de chargement des statistiques");
+    const data = await res.json();
+
+    // 1. Spécialités
+    const tableSpec = document.getElementById("table-specialite");
+    data.par_specialite.forEach(s => {
+      tableSpec.innerHTML += `<tr><td><strong>${s.specialite}</strong></td><td>${s.total}</td></tr>`;
+    });
+
+    // 2. Jours chargés
+    const tableJours = document.getElementById("table-jours");
+    data.jours_charges.forEach(j => {
+      tableJours.innerHTML += `<tr><td><strong>${j.date}</strong></td><td><span class="badge badge-prevu">${j.total_rdv} RDV</span></td></tr>`;
+    });
+
+    // 3. Taux d'annulation
+    const tableAnnul = document.getElementById("table-annulations");
+    data.taux_annulation.forEach(m => {
+      const couleur = m.taux > 20 ? 'var(--danger)' : 'var(--primary)';
+      tableAnnul.innerHTML += `
+        <tr>
+          <td>${m.nom}</td>
+          <td>${m.total_rdv}</td>
+          <td>${m.annules}</td>
+          <td><strong style="color: ${couleur};">${m.taux || 0}%</strong></td>
+        </tr>`;
+    });
+
+    // 4. Patients par semaine
+    const tableSemaine = document.getElementById("table-semaine");
+    data.patients_semaine.forEach(sem => {
+      tableSemaine.innerHTML += `<tr><td>Semaine ${sem.semaine}</td><td><strong>${sem.nouveaux}</strong></td></tr>`;
+    });
+
+    chargement.style.display = "none";
+    contenu.style.display = "block";
+
+  } catch (err) {
+    chargement.innerHTML = '<p style="color: var(--danger);">Impossible de charger les statistiques.</p>';
+    console.error(err);
+  }
+});
+</script>
+{% endblock %}

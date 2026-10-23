@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block titre %}Liste des Patients - Administration{% endblock %}
+
+{% block contenu %}
+<div>
+  <div style="margin-bottom: 1.5rem;">
+    <h1>Fichier des Patients</h1>
+    <p style="color: var(--text-muted);">Consultez et recherchez parmi les patients enregistrés dans la clinique.</p>
+  </div>
+
+  <form action="{{ url_for('admin_patients') }}" method="GET" class="card" style="display: flex; gap: 0.75rem; align-items: flex-end; margin-bottom: 1.5rem;">
+    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+      <label for="q">Rechercher par nom ou prénom</label>
+      <input type="text" name="q" id="q" class="form-control" value="{{ recherche }}" placeholder="Ex: Mbarga, Aline...">
+    </div>
+    <button type="submit" class="btn btn-primary" style="padding: 0.65rem 1.5rem;">Rechercher</button>
+    {% if recherche %}
+      <a href="{{ url_for('admin_patients') }}" class="btn btn-secondary">Réinitialiser</a>
+    {% endif %}
+  </form>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nom & Prénom</th>
+            <th>Téléphone</th>
+            <th>Date de Naissance</th>
+            <th>Ville</th>
+            <th>Enregistré le</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in patients %}
+            <tr>
+              <td>#{{ p.id }}</td>
+              <td><strong>{{ p.nom }}</strong> {{ p.prenom }}</td>
+              <td>{{ p.telephone }}</td>
+              <td>{{ p.date_naissance }}</td>
+              <td>{{ p.ville }}</td>
+              <td style="font-size: 0.85rem; color: var(--text-muted);">{{ p.cree_le[:10] }}</td>
+              <td>
+                <a href="{{ url_for('mes_rdv', telephone=p.telephone) }}" class="btn btn-sm btn-secondary" target="_blank">
+                  Voir RDVs
+                </a>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                Aucun patient trouvé correspondant à la recherche.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

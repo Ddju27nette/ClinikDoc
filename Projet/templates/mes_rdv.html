@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block titre %}Mes Rendez-vous - ClinikDoc{% endblock %}
+
+{% block contenu %}
+<div style="max-width: 900px; margin: 0 auto;">
+  <div style="margin-bottom: 1.5rem;">
+    <h1>Consulter mes rendez-vous</h1>
+    <p style="color: var(--text-muted);">Saisissez votre numéro de téléphone pour retrouver vos rendez-vous programmés et passés.</p>
+  </div>
+
+  <!-- Formulaire de recherche par téléphone -->
+  <form action="{{ url_for('mes_rdv') }}" method="GET" class="card" style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+    <div class="form-group" style="flex: 1; min-width: 250px; margin-bottom: 0;">
+      <label for="telephone">Numéro de téléphone portable</label>
+      <input type="tel" name="telephone" id="telephone" class="form-control" 
+             value="{{ telephone }}" placeholder="Ex: 699123456" required>
+    </div>
+    <button type="submit" class="btn btn-primary" style="padding: 0.65rem 1.5rem;">Rechercher</button>
+  </form>
+
+  {% if patient %}
+    <div class="card" style="margin-top: 1.5rem; background-color: var(--primary-light); border-color: #86efac;">
+      <h2 style="font-size: 1.15rem; color: #14532d; margin-bottom: 0.25rem;">Dossier Patient : {{ patient.prenom }} {{ patient.nom }}</h2>
+      <p style="font-size: 0.9rem; color: #166534;">
+        Ville : {{ patient.ville }} | Né(e) le : {{ patient.date_naissance }} | Téléphone : {{ patient.telephone }}
+      </p>
+    </div>
+
+    <div class="card" style="margin-top: 1rem;">
+      <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Historique des consultations</h3>
+      {% if rendez_vous %}
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Heure</th>
+                <th>Médecin</th>
+                <th>Spécialité</th>
+                <th>Motif</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in rendez_vous %}
+                <tr>
+                  <td><strong>{{ r.date }}</strong></td>
+                  <td>{{ r.heure }}</td>
+                  <td>{{ r.medecin_nom }}</td>
+                  <td>{{ r.specialite }}</td>
+                  <td>{{ r.motif }}</td>
+                  <td>
+                    <span class="badge badge-{{ r.statut }}">{{ r.statut }}</span>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p style="color: var(--text-muted); text-align: center; padding: 1.5rem 0;">Aucun rendez-vous enregistré pour ce dossier.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

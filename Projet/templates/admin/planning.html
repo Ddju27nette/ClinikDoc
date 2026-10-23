@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block titre %}Planning des Consultations - Administration{% endblock %}
+
+{% block contenu %}
+<div>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1>Planning des Consultations</h1>
+      <p style="color: var(--text-muted);">Suivi en temps réel des rendez-vous et gestion des présences.</p>
+    </div>
+    <div>
+      <a href="{{ url_for('admin_ajouter_medecin') }}" class="btn btn-primary">+ Nouveau Médecin</a>
+    </div>
+  </div>
+
+  <!-- Filtres par Date et par Médecin -->
+  <form action="{{ url_for('admin_planning') }}" method="GET" class="card" style="padding: 1rem; margin-bottom: 1.5rem;">
+    <div class="grid-3" style="align-items: flex-end;">
+      <div class="form-group" style="margin-bottom: 0;">
+        <label for="date">Date sélectionnée</label>
+        <input type="date" name="date" id="date" class="form-control" value="{{ date_selectionnee }}">
+      </div>
+      <div class="form-group" style="margin-bottom: 0;">
+        <label for="medecin_id">Filtrer par médecin</label>
+        <select name="medecin_id" id="medecin_id" class="form-control">
+          <option value="">Tous les praticiens</option>
+          {% for m in medecins %}
+            <option value="{{ m.id }}" {% if medecin_selectionne == m.id %}selected{% endif %}>
+              {{ m.nom }} ({{ m.specialite }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-secondary" style="height: 42px;">Appliquer le filtre</button>
+    </div>
+  </form>
+
+  <!-- Tableau des rendez-vous du jour -->
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Heure</th>
+            <th>Médecin</th>
+            <th>Patient</th>
+            <th>Téléphone</th>
+            <th>Motif</th>
+            <th>Statut</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rdvs %}
+            <tr>
+              <td><strong>{{ r.heure }}</strong></td>
+              <td>{{ r.medecin_nom }} ({{ r.specialite }})</td>
+              <td>{{ r.patient_prenom }} {{ r.patient_nom }}</td>
+              <td>{{ r.telephone }}</td>
+              <td>{{ r.motif }}</td>
+              <td>
+                <span class="badge badge-{{ r.statut }}">{{ r.statut }}</span>
+              </td>
+              <td>
+                <form action="{{ url_for('admin_changer_statut', id_rdv=r.id) }}" method="POST" style="display: flex; gap: 0.35rem;">
+                  {% if r.statut != 'effectué' %}
+                    <button type="submit" name="statut" value="effectué" class="btn btn-sm btn-primary" title="Marquer comme honoré">✓</button>
+                  {% endif %}
+                  {% if r.statut != 'annulé' %}
+                    <button type="submit" name="statut" value="annulé" class="btn btn-sm btn-danger" title="Marquer comme annulé">✕</button>
+                  {% endif %}
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                Aucun rendez-vous programmé à cette date pour les critères sélectionnés.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

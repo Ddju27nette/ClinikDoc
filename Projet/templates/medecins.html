@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block titre %}Équipe Médicale - ClinikDoc{% endblock %}
+
+{% block contenu %}
+<div style="margin-bottom: 1.5rem;">
+  <h1>Nos Médecins Spécialistes</h1>
+  <p style="color: var(--text-muted);">Consultez les plannings d'intervention et réservez votre créneau.</p>
+</div>
+
+<!-- Filtres de spécialités -->
+<div class="card" style="padding: 0.75rem 1rem; margin-bottom: 1.5rem;">
+  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+    <span style="font-weight: 600; font-size: 0.9rem;">Spécialités :</span>
+    <a href="{{ url_for('medecins') }}" 
+       class="btn btn-sm {% if not specialite_active %}btn-primary{% else %}btn-secondary{% endif %}">
+       Toutes
+    </a>
+    {% for spec in specialites %}
+      <a href="{{ url_for('medecins', specialite=spec) }}" 
+         class="btn btn-sm {% if specialite_active == spec %}btn-primary{% else %}btn-secondary{% endif %}">
+         {{ spec }}
+      </a>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Grille des praticiens -->
+<div class="grid-3">
+  {% for medecin in medecins %}
+    <article class="card">
+      <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+        <div style="font-size: 2.5rem; background: var(--bg-page); padding: 0.5rem; border-radius: var(--radius-sm);" aria-hidden="true">
+          🩺
+        </div>
+        <div>
+          <h2 style="font-size: 1.15rem; margin-bottom: 0.2rem;">{{ medecin.nom }}</h2>
+          <span class="badge badge-prevu">{{ medecin.specialite }}</span>
+        </div>
+      </div>
+      <div style="font-size: 0.9rem; margin-bottom: 1.25rem;">
+        <p style="color: var(--text-muted); margin-bottom: 0.25rem;"><strong>Jours de consultation :</strong></p>
+        <p>{{ medecin.jours_consultation }}</p>
+      </div>
+      <a href="{{ url_for('reserver', medecin_id=medecin.id) }}" class="btn btn-primary" style="width: 100%;">
+        Réserver avec ce médecin
+      </a>
+    </article>
+  {% else %}
+    <p style="grid-column: 1 / -1; text-align: center; color: var(--text-muted);">Aucun médecin trouvé dans cette spécialité.</p>
+  {% endfor %}
+</div>
+{% endblock %}
