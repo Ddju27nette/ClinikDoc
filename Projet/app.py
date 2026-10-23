@@ -1,21 +1,25 @@
+import csv
 import functools
+import io
 import os
 import re
+import secrets
 import sqlite3
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from flask import (
     Flask,
     abort,
     flash,
     g,
     jsonify,
+    make_response,
     redirect,
     render_template,
     request,
     session,
     url_for,
 )
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 # ---------------------------------------------------------
 # Configuration des chemins absolus (résout TemplateNotFound sous Windows)
@@ -25,12 +29,17 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app = Flask(
     __name__,
     template_folder=os.path.join(BASE_DIR, "templates"),
-    static_folder=os.path.join(BASE_DIR, "static")
+    static_folder=os.path.join(BASE_DIR, "public", "static")
 )
 
-# Clé secrète pour les sessions et les messages flash
-app.config["SECRET_KEY"] = "clinikdoc_secret_key_2026_securisee"
-app.config["DATABASE"] = os.path.join(BASE_DIR, "projet.db")
+app.config["VERCEL_DEMO"] = os.environ.get("VERCEL") == "1"
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or (
+    None if app.config["VERCEL_DEMO"] else secrets.token_hex(32)
+)
+app.config["DATABASE"] = (
+    "/tmp/clinikdoc-demo.sqlite" if app.config["VERCEL_DEMO"]
+    else os.path.join(BASE_DIR, "projet.db")
+)
 
 # ---------------------------------------------------------
 # Gestion de la connexion SQLite par requête
@@ -38,9 +47,36 @@ app.config["DATABASE"] = os.path.join(BASE_DIR, "projet.db")
 def get_db():
     """Ouvre une connexion par requête et la réutilise."""
     if "db" not in g:
+        if app.config["VERCEL_DEMO"] and not os.path.exists(app.config["DATABASE"]):
+            secret_key = app.config["SECRET_KEY"]
+            admin_login = os.environ.get("CLINIKDOC_ADMIN_LOGIN", "").strip()
+            admin_password = os.environ.get("CLINIKDOC_ADMIN_PASSWORD", "")
+            if not secret_key or not admin_login or not admin_password:
+                raise RuntimeError(
+                    "Configurez SECRET_KEY, CLINIKDOC_ADMIN_LOGIN et "
+                    "CLINIKDOC_ADMIN_PASSWORD dans les variables d'environnement Vercel."
+                )
+            connection = sqlite3.connect(app.config["DATABASE"])
+            with open(os.path.join(BASE_DIR, "schema.sql"), encoding="utf-8") as schema_file:
+                connection.executescript(schema_file.read())
+            connection.execute(
+                "INSERT INTO administrateurs (login, empreinte) VALUES (?, ?)",
+                (admin_login, generate_password_hash(admin_password))
+            )
+            connection.commit()
+            connection.close()
+
         g.db = sqlite3.connect(app.config["DATABASE"])
         g.db.row_factory = sqlite3.Row  # Accès aux colonnes par leur nom
         g.db.execute("PRAGMA foreign_keys = ON;")
+        colonnes = {row["name"] for row in g.db.execute("PRAGMA table_info(medecins)")}
+        if "login" not in colonnes:
+            g.db.execute("ALTER TABLE medecins ADD COLUMN login TEXT")
+        if "empreinte" not in colonnes:
+            g.db.execute("ALTER TABLE medecins ADD COLUMN empreinte TEXT")
+        g.db.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_medecins_login ON medecins(login) WHERE login IS NOT NULL"
+        )
     return g.db
 
 @app.teardown_appcontext
@@ -59,6 +95,16 @@ def connexion_requise(vue):
     def vue_enveloppee(**kwargs):
         if session.get("admin_id") is None:
             flash("Veuillez vous connecter pour accéder à l'administration.", "erreur")
+            return redirect(url_for("connexion"))
+        return vue(**kwargs)
+    return vue_enveloppee
+
+def medecin_connecte_requis(vue):
+    """Réserve une page à un médecin connecté."""
+    @functools.wraps(vue)
+    def vue_enveloppee(**kwargs):
+        if session.get("medecin_id") is None:
+            flash("Veuillez vous connecter avec un compte médecin.", "erreur")
             return redirect(url_for("connexion"))
         return vue(**kwargs)
     return vue_enveloppee
@@ -206,11 +252,13 @@ def mes_rdv():
     telephone = request.args.get("telephone", "").strip().replace(" ", "")
     rendez_vous = []
     patient = None
+    rappels = []
     
     if telephone:
         db = get_db()
         patient = db.execute("SELECT * FROM patients WHERE telephone = ?", (telephone,)).fetchone()
         if patient:
+            session["patient_id"] = patient["id"]
             rendez_vous = db.execute(
                 """SELECT r.id, r.date, r.heure, r.motif, r.statut, m.nom AS medecin_nom, m.specialite
                    FROM rendez_vous r
@@ -219,10 +267,19 @@ def mes_rdv():
                    ORDER BY r.date DESC, r.heure DESC""",
                 (patient["id"],)
             ).fetchall()
+            demain = (date.today() + timedelta(days=1)).isoformat()
+            rappels = [rdv for rdv in rendez_vous if rdv["date"] == demain and rdv["statut"] == "prévu"]
         else:
+            session.pop("patient_id", None)
             flash("Aucun dossier patient trouvé avec ce numéro de téléphone.", "avertissement")
 
-    return render_template("mes_rdv.html", telephone=telephone, patient=patient, rendez_vous=rendez_vous)
+    return render_template(
+        "mes_rdv.html",
+        telephone=telephone,
+        patient=patient,
+        rendez_vous=rendez_vous,
+        rappels=rappels
+    )
 
 # ---------------------------------------------------------
 # APIS JSON (Endpoints consommés par fetch)
@@ -266,6 +323,7 @@ def api_creneaux():
     return jsonify({"creneaux": libres, "total_libres": len(libres)})
 
 @app.route("/api/statistiques")
+@connexion_requise
 def api_statistiques():
     """API JSON des statistiques demandées par le cahier des charges."""
     db = get_db()
@@ -320,21 +378,34 @@ def api_statistiques():
 # ---------------------------------------------------------
 @app.route("/connexion", methods=["GET", "POST"])
 def connexion():
-    """Authentification sécurisée de l'administrateur."""
+    """Authentification des administrateurs et médecins."""
     if request.method == "POST":
         login = request.form.get("login", "").strip()
         mot_de_passe = request.form.get("mdp", "").strip()
+        role = request.form.get("role", "admin").strip()
 
         db = get_db()
-        admin = db.execute("SELECT * FROM administrateurs WHERE login = ?", (login,)).fetchone()
+        if role == "admin":
+            utilisateur = db.execute("SELECT * FROM administrateurs WHERE login = ?", (login,)).fetchone()
+            if utilisateur and check_password_hash(utilisateur["empreinte"], mot_de_passe):
+                session.clear()
+                session["admin_id"] = utilisateur["id"]
+                session["admin_login"] = utilisateur["login"]
+                flash(f"Bienvenue, {utilisateur['login']}.", "succes")
+                return redirect(url_for("admin_planning"))
+        elif role == "medecin":
+            utilisateur = db.execute(
+                "SELECT id, nom, login, empreinte FROM medecins WHERE login = ? AND actif = 1",
+                (login,)
+            ).fetchone()
+            if utilisateur and utilisateur["empreinte"] and check_password_hash(utilisateur["empreinte"], mot_de_passe):
+                session.clear()
+                session["medecin_id"] = utilisateur["id"]
+                session["medecin_nom"] = utilisateur["nom"]
+                session["medecin_login"] = utilisateur["login"]
+                flash(f"Bienvenue, {utilisateur['nom']}.", "succes")
+                return redirect(url_for("espace_medecin"))
 
-        if admin and check_password_hash(admin["empreinte"], mot_de_passe):
-            session.clear()
-            session["admin_id"] = admin["id"]
-            session["admin_login"] = admin["login"]
-            flash(f"Bienvenue, {admin['login']}.", "succes")
-            return redirect(url_for("admin_planning"))
-        
         flash("Identifiants incorrects.", "erreur")
         return redirect(url_for("connexion"))
 
@@ -353,9 +424,13 @@ def admin_planning():
     """Planning du jour filtrable par médecin."""
     jour = request.args.get("date", date.today().isoformat())
     medecin_id = request.args.get("medecin_id", type=int)
+    specialite = request.args.get("specialite", "").strip()
 
     db = get_db()
-    medecins = db.execute("SELECT id, nom, specialite FROM medecins WHERE actif = 1").fetchall()
+    medecins = db.execute("SELECT id, nom, specialite, jours_consultation, actif, login FROM medecins ORDER BY nom").fetchall()
+    specialites = db.execute(
+        "SELECT DISTINCT specialite FROM medecins WHERE actif = 1 ORDER BY specialite"
+    ).fetchall()
 
     requete = """
         SELECT r.id, r.date, r.heure, r.motif, r.statut,
@@ -371,6 +446,9 @@ def admin_planning():
     if medecin_id:
         requete += " AND r.medecin_id = ?"
         params.append(medecin_id)
+    if specialite:
+        requete += " AND m.specialite = ?"
+        params.append(specialite)
 
     requete += " ORDER BY r.heure ASC"
     rdvs = db.execute(requete, params).fetchall()
@@ -378,8 +456,73 @@ def admin_planning():
     return render_template("admin/planning.html", 
                            rdvs=rdvs, 
                            medecins=medecins, 
+                           specialites=specialites,
                            date_selectionnee=jour, 
-                           medecin_selectionne=medecin_id)
+                           medecin_selectionne=medecin_id,
+                           specialite_selectionnee=specialite)
+
+@app.route("/medecin/espace")
+@medecin_connecte_requis
+def espace_medecin():
+    """Affiche au médecin connecté son planning passé et à venir."""
+    db = get_db()
+    medecin_id = session["medecin_id"]
+    rendez_vous = db.execute(
+        """SELECT r.id, r.date, r.heure, r.motif, r.statut,
+                  p.nom AS patient_nom, p.prenom AS patient_prenom, p.telephone
+           FROM rendez_vous r
+           JOIN patients p ON p.id = r.patient_id
+           WHERE r.medecin_id = ?
+           ORDER BY r.date DESC, r.heure DESC""",
+        (medecin_id,)
+    ).fetchall()
+    prochain_rdv = db.execute(
+        """SELECT r.date, r.heure, r.motif, p.nom AS patient_nom, p.prenom AS patient_prenom
+           FROM rendez_vous r
+           JOIN patients p ON p.id = r.patient_id
+           WHERE r.medecin_id = ? AND r.statut = 'prévu' AND r.date >= ?
+           ORDER BY r.date, r.heure
+           LIMIT 1""",
+        (medecin_id, date.today().isoformat())
+    ).fetchone()
+    return render_template(
+        "medecin/espace.html",
+        rendez_vous=rendez_vous,
+        prochain_rdv=prochain_rdv
+    )
+
+@app.route("/admin/planning/export.csv")
+@connexion_requise
+def admin_export_planning():
+    """Exporte le planning d'un médecin en CSV."""
+    medecin_id = request.args.get("medecin_id", type=int)
+    if not medecin_id:
+        flash("Sélectionnez un médecin pour exporter son planning.", "erreur")
+        return redirect(url_for("admin_planning"))
+
+    db = get_db()
+    medecin = db.execute("SELECT nom FROM medecins WHERE id = ?", (medecin_id,)).fetchone()
+    if not medecin:
+        abort(404)
+    rendez_vous = db.execute(
+        """SELECT r.date, r.heure, p.nom, p.prenom, p.telephone, m.specialite, r.motif, r.statut
+           FROM rendez_vous r
+           JOIN patients p ON p.id = r.patient_id
+           JOIN medecins m ON m.id = r.medecin_id
+           WHERE r.medecin_id = ?
+           ORDER BY r.date, r.heure""",
+        (medecin_id,)
+    ).fetchall()
+
+    sortie = io.StringIO()
+    sortie.write("\ufeff")
+    writer = csv.writer(sortie, delimiter=";")
+    writer.writerow(["Date", "Heure", "Nom", "Prénom", "Téléphone", "Spécialité", "Motif", "Statut"])
+    writer.writerows(tuple(rdv) for rdv in rendez_vous)
+    reponse = make_response(sortie.getvalue())
+    reponse.headers["Content-Type"] = "text/csv; charset=utf-8"
+    reponse.headers["Content-Disposition"] = f'attachment; filename="planning-medecin-{medecin_id}.csv"'
+    return reponse
 
 @app.route("/admin/rdv/<int:id_rdv>/statut", methods=["POST"])
 @connexion_requise
@@ -416,17 +559,26 @@ def admin_ajouter_medecin():
         nom = request.form.get("nom", "").strip()
         specialite = request.form.get("specialite", "").strip()
         jours = request.form.getlist("jours")
+        login = request.form.get("login", "").strip()
+        mot_de_passe = request.form.get("mdp", "")
 
-        if not nom or not specialite or not jours:
-            flash("Veuillez renseigner tous les champs.", "erreur")
+        if not nom or not specialite or not jours or not login or not mot_de_passe:
+            flash("Veuillez renseigner toutes les informations, y compris les identifiants du médecin.", "erreur")
             return redirect(url_for("admin_ajouter_medecin"))
 
         jours_str = ",".join(jours)
         db = get_db()
-        db.execute(
-            "INSERT INTO medecins (nom, specialite, jours_consultation, photo, actif) VALUES (?, ?, ?, 'default_doc.png', 1)",
-            (nom, specialite, jours_str)
-        )
+        try:
+            db.execute(
+                """INSERT INTO medecins
+                   (nom, specialite, jours_consultation, photo, actif, login, empreinte)
+                   VALUES (?, ?, ?, 'default_doc.png', 1, ?, ?)""",
+                (nom, specialite, jours_str, login, generate_password_hash(mot_de_passe))
+            )
+        except sqlite3.IntegrityError:
+            db.rollback()
+            flash("Cet identifiant médecin est déjà utilisé.", "erreur")
+            return redirect(url_for("admin_ajouter_medecin"))
         db.commit()
         flash(f"Le médecin {nom} a été ajouté avec succès.", "succes")
         return redirect(url_for("admin_planning"))
@@ -447,16 +599,34 @@ def admin_modifier_medecin(id_medecin):
         specialite = request.form.get("specialite", "").strip()
         jours = request.form.getlist("jours")
         actif = 1 if request.form.get("actif") else 0
+        login = request.form.get("login", "").strip()
+        mot_de_passe = request.form.get("mdp", "")
 
-        if not nom or not specialite or not jours:
+        if not nom or not specialite or not jours or not login:
             flash("Veuillez renseigner tous les champs.", "erreur")
             return redirect(url_for("admin_modifier_medecin", id_medecin=id_medecin))
 
         jours_str = ",".join(jours)
-        db.execute(
-            "UPDATE medecins SET nom = ?, specialite = ?, jours_consultation = ?, actif = ? WHERE id = ?",
-            (nom, specialite, jours_str, actif, id_medecin)
-        )
+        try:
+            if mot_de_passe:
+                db.execute(
+                    """UPDATE medecins
+                       SET nom = ?, specialite = ?, jours_consultation = ?, actif = ?,
+                           login = ?, empreinte = ?
+                       WHERE id = ?""",
+                    (nom, specialite, jours_str, actif, login, generate_password_hash(mot_de_passe), id_medecin)
+                )
+            else:
+                db.execute(
+                    """UPDATE medecins
+                       SET nom = ?, specialite = ?, jours_consultation = ?, actif = ?, login = ?
+                       WHERE id = ?""",
+                    (nom, specialite, jours_str, actif, login, id_medecin)
+                )
+        except sqlite3.IntegrityError:
+            db.rollback()
+            flash("Cet identifiant médecin est déjà utilisé.", "erreur")
+            return redirect(url_for("admin_modifier_medecin", id_medecin=id_medecin))
         db.commit()
         flash("Informations du médecin mises à jour.", "succes")
         return redirect(url_for("admin_planning"))
@@ -473,5 +643,8 @@ def admin_statistiques():
 # Lancement de l'application
 # ---------------------------------------------------------
 if __name__ == "__main__":
-    # debug=True en phase de développement local (à basculer sur False pour le rendu)
-    app.run(debug=True)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", "5000")),
+        debug=False
+    )

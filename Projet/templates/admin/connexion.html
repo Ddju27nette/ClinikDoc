@@ -6,20 +6,27 @@
 <div style="max-width: 450px; margin: 2rem auto;">
   <div class="card" style="padding: 2rem 1.5rem;">
     <div style="text-align: center; margin-bottom: 1.5rem;">
-      <div style="font-size: 2.5rem; margin-bottom: 0.5rem;" aria-hidden="true">🔐</div>
-      <h1 style="font-size: 1.5rem;">Espace Professionnel</h1>
-      <p style="color: var(--text-muted); font-size: 0.9rem;">Accès réservé au personnel de la clinique</p>
+      <div style="font-size: 2.5rem; margin-bottom: 0.5rem;" aria-hidden="true"><strong>...</strong></div>
+      <h1 style="font-size: 1.5rem;">Connexion à ClinikDoc</h1>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Choisissez votre espace professionnel.</p>
     </div>
 
     <form action="{{ url_for('connexion') }}" method="POST">
       <div class="form-group">
-        <label for="login">Identifiant (Login)</label>
-        <input type="text" name="login" id="login" class="form-control" placeholder="admin" required autofocus>
+        <label for="role">Vous êtes</label>
+        <select name="role" id="role" class="form-control">
+          <option value="admin">Administrateur</option>
+          <option value="medecin">Médecin</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="login">Identifiant</label>
+        <input type="text" name="login" id="login" class="form-control" required autofocus>
       </div>
 
       <div class="form-group">
         <label for="mdp">Mot de passe</label>
-        <input type="password" name="mdp" id="mdp" class="form-control" placeholder="••••••••" required>
+        <input type="password" name="mdp" id="mdp" class="form-control" required>
       </div>
 
       <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; margin-top: 0.5rem;">

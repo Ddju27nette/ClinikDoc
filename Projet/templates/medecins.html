@@ -27,12 +27,11 @@
 
 <!-- Grille des praticiens -->
 <div class="grid-3">
+  {% set portraits = ['OIP.webp', 'OIP (1).webp', 'OIP (2).webp', 'OIP (3).webp'] %}
   {% for medecin in medecins %}
     <article class="card">
+      <img class="doctor-photo" src="{{ url_for('static', filename='images/' ~ portraits[(medecin.id - 1) % portraits|length]) }}" alt="Portrait de {{ medecin.nom }}">
       <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-        <div style="font-size: 2.5rem; background: var(--bg-page); padding: 0.5rem; border-radius: var(--radius-sm);" aria-hidden="true">
-          🩺
-        </div>
         <div>
           <h2 style="font-size: 1.15rem; margin-bottom: 0.2rem;">{{ medecin.nom }}</h2>
           <span class="badge badge-prevu">{{ medecin.specialite }}</span>

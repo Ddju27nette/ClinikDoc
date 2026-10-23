@@ -12,23 +12,31 @@
   <header class="site-header">
     <div class="header-container">
       <a href="{{ url_for('index') }}" class="logo-area" aria-label="Accueil ClinikDoc">
-        <span>🏥</span> ClinikDoc
+        <img class="logo-image" src="{{ url_for('static', filename='images/Logo médical ClinikDoc en bleu.png') }}" alt="ClinikDoc">
       </a>
-      <button class="nav-toggle" id="nav-toggle" aria-label="Ouvrir le menu de navigation">☰</button>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Ouvrir le menu de navigation" aria-expanded="false" aria-controls="main-nav">☰</button>
       <nav class="main-nav" id="main-nav">
         <a href="{{ url_for('index') }}">Accueil</a>
         <a href="{{ url_for('medecins') }}">Médecins</a>
         <a href="{{ url_for('reserver') }}">Prendre RDV</a>
-        <a href="{{ url_for('mes_rdv') }}">Mes Rendez-vous</a>
+        {% if session.get('patient_id') %}
+          <a href="{{ url_for('mes_rdv') }}">Mes Rendez-vous</a>
+        {% endif %}
         {% if session.get('admin_id') %}
           <a href="{{ url_for('admin_planning') }}" class="admin-badge">Planning Admin</a>
           <a href="{{ url_for('admin_patients') }}">Patients</a>
           <a href="{{ url_for('admin_statistiques') }}">Statistiques</a>
+          <a href="{{ url_for('admin_ajouter_medecin') }}">Ajouter médecin</a>
+          <form action="{{ url_for('deconnexion') }}" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-secondary">Déconnexion</button>
+          </form>
+        {% elif session.get('medecin_id') %}
+          <a href="{{ url_for('espace_medecin') }}" class="admin-badge">Mon planning</a>
           <form action="{{ url_for('deconnexion') }}" method="POST" style="display:inline;">
             <button type="submit" class="btn btn-sm btn-secondary">Déconnexion</button>
           </form>
         {% else %}
-          <a href="{{ url_for('connexion') }}">Espace Pro</a>
+          <a href="{{ url_for('connexion') }}">Connexion</a>
         {% endif %}
       </nav>
     </div>
@@ -47,8 +55,8 @@
   </main>
 
   <footer class="site-footer">
-    <p>&copy; 2026 ClinikDoc - Clinique Médicale Privée de Douala (Cameroun)[cite: 41].</p>
-    <p>Technologies Web et Applications - Évaluation Finale en Génie Logiciel[cite: 28].</p>
+    <p>&copy; 2026 ClinikDoc - Clinique Médicale Privée de Douala (Cameroun).</p>
+    <p>Technologies Web et Applications - Évaluation Finale en Génie Logiciel.</p>
   </footer>
 </body>
 </html>

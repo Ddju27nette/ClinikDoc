@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block titre %}Mon planning - ClinikDoc{% endblock %}
+
+{% block contenu %}
+<div>
+  <div style="margin-bottom: 1.5rem;">
+    <h1>Bonjour {{ session.get('medecin_nom') }}</h1>
+    <p style="color: var(--text-muted);">Retrouvez tous vos rendez-vous, passés et à venir.</p>
+  </div>
+
+  {% if prochain_rdv %}
+    <section class="card" style="background-color: var(--primary-light); border-color: #86efac;">
+      <h2 style="font-size: 1.15rem; color: #14532d; margin-bottom: 0.35rem;">Votre prochain rendez-vous</h2>
+      <p>
+        {{ prochain_rdv.date }} à {{ prochain_rdv.heure }} — {{ prochain_rdv.patient_prenom }} {{ prochain_rdv.patient_nom }}
+      </p>
+      <p style="color: #166534;">Motif : {{ prochain_rdv.motif }}</p>
+    </section>
+  {% else %}
+    <div class="card"><p>Aucun rendez-vous à venir n'est programmé.</p></div>
+  {% endif %}
+
+  <section class="card">
+    <h2 style="font-size: 1.15rem; margin-bottom: 1rem;">Historique et planning</h2>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Date</th><th>Heure</th><th>Patient</th><th>Téléphone</th><th>Motif</th><th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rendez_vous %}
+            <tr>
+              <td>{{ r.date }}</td>
+              <td>{{ r.heure }}</td>
+              <td>{{ r.patient_prenom }} {{ r.patient_nom }}</td>
+              <td>{{ r.telephone }}</td>
+              <td>{{ r.motif }}</td>
+              <td><span class="badge badge-{{ r.statut }}">{{ r.statut }}</span></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" style="text-align: center;">Aucun rendez-vous enregistré.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

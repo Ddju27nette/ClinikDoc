@@ -5,7 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (toggleBtn && mainNav) {
     toggleBtn.addEventListener("click", () => {
-      mainNav.classList.toggle("ouvert");
+      const estOuvert = mainNav.classList.toggle("ouvert");
+      toggleBtn.setAttribute("aria-expanded", String(estOuvert));
     });
   }
 });

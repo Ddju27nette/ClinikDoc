@@ -22,7 +22,9 @@ CREATE TABLE medecins (
     specialite TEXT NOT NULL CHECK (specialite IN ('Généraliste', 'Pédiatrie', 'Gynécologie', 'Cardiologie')),
     photo TEXT NOT NULL DEFAULT 'default_doc.png',
     jours_consultation TEXT NOT NULL, -- Ex: 'Lundi,Mardi,Jeudi'
-    actif INTEGER NOT NULL DEFAULT 1 CHECK (actif IN (0, 1))
+    actif INTEGER NOT NULL DEFAULT 1 CHECK (actif IN (0, 1)),
+    login TEXT UNIQUE,
+    empreinte TEXT
 );
 
 -- 3. Table des patients

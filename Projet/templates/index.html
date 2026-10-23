@@ -40,9 +40,10 @@
   </div>
 
   <div class="grid-4">
+    {% set portraits = ['OIP.webp', 'OIP (1).webp', 'OIP (2).webp', 'OIP (3).webp'] %}
     {% for medecin in medecins %}
       <div class="card" style="text-align: center;">
-        <div style="font-size: 3rem; margin-bottom: 0.5rem;" aria-hidden="true">👨‍⚕️</div>
+        <img class="doctor-photo" src="{{ url_for('static', filename='images/' ~ portraits[(medecin.id - 1) % portraits|length]) }}" alt="Portrait de {{ medecin.nom }}">
         <h3 style="font-size: 1.1rem; margin-bottom: 0.25rem;">{{ medecin.nom }}</h3>
         <span class="badge" style="background-color: var(--primary-light); color: var(--primary); margin-bottom: 0.75rem;">
           {{ medecin.specialite }}
