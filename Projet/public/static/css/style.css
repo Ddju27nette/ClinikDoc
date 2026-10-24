@@ -37,6 +37,28 @@ body {
   min-height: 100vh;
 }
 
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 img {
   max-width: 100%;
   height: auto;
@@ -58,6 +80,7 @@ a:hover {
   position: sticky;
   top: 0;
   z-index: 50;
+  animation: page-enter 0.45s ease-out both;
 }
 
 .header-container {
@@ -83,6 +106,10 @@ a:hover {
   width: 62px;
   height: 62px;
   object-fit: contain;
+  transition: transform 0.25s ease;
+}
+.logo-area:hover .logo-image {
+  transform: scale(1.06);
 }
 
 .doctor-photo {
@@ -114,6 +141,7 @@ a:hover {
 }
 .main-nav.ouvert {
   display: flex;
+  animation: page-enter 0.25s ease-out both;
 }
 .main-nav a, .main-nav button {
   padding: 0.6rem 0;
@@ -139,6 +167,7 @@ a:hover {
   width: 100%;
   margin: 0 auto;
   padding: 1.5rem 1.25rem;
+  animation: page-enter 0.55s ease-out both;
 }
 
 /* Messages flash */
@@ -182,7 +211,11 @@ a:hover {
   border: none;
   cursor: pointer;
   text-align: center;
-  transition: background-color 0.15s ease-in-out;
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(15, 23, 42, 0.12);
 }
 .btn-primary {
   background-color: var(--primary);
@@ -217,6 +250,26 @@ a:hover {
   padding: 1.25rem;
   box-shadow: var(--shadow);
   margin-bottom: 1.5rem;
+  animation: card-enter 0.5s ease-out both;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 18px -8px rgba(15, 23, 42, 0.2);
+}
+
+.grid-3 > .card:nth-child(2),
+.grid-4 > .card:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.grid-3 > .card:nth-child(3),
+.grid-4 > .card:nth-child(3) {
+  animation-delay: 0.16s;
+}
+
+.grid-4 > .card:nth-child(4) {
+  animation-delay: 0.24s;
 }
 
 /* Grilles & Formulaires */
@@ -237,6 +290,7 @@ a:hover {
   border-radius: var(--radius-sm);
   background-color: #ffffff;
   color: var(--text-main);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .form-control:focus {
   outline: none;
@@ -296,6 +350,11 @@ a:hover {
   font-weight: 600;
   font-size: 0.9rem;
   text-align: center;
+  transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.creneau-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
 }
 .creneau-btn.selected {
   background-color: var(--primary);
@@ -311,6 +370,17 @@ a:hover {
   font-size: 0.85rem;
   text-align: center;
   margin-top: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* =========================================================
